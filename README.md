@@ -6,8 +6,7 @@ on remote servers.
 
 Because the binaries are built locally, you will no longer need to
 install all of the build dependencies on your remote server. The
-builder checks that dependencies are met on a fresh Ubuntu 20.04
-installation.
+builder checks that dependencies are met on a fresh installation.
 
 ## Due Diligence
 
@@ -57,8 +56,11 @@ Log in to the remote server and install the binaries.
 
 ```sh
 ssh <user>@<remote ip>
+# Extract Binaries
 sudo tar -zxvf cardano-node-<version>.tar.gz -C /
 rm cardano-node-<version>.tar.gz
+# Update linker cache
+sudo ldconfig
 ```
 
 Test to make sure that everything was installed correctly:

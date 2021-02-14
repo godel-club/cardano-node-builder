@@ -43,7 +43,7 @@ ENV FS_LIB_PREFIX=$FS_PREFIX/lib
 ENV FS_BIN_PREFIX=$FS_PREFIX/bin
 ENV FS_SHARE_PREFIX=$FS_PREFIX/share/cardano
 
-RUN mkdir -p $DEP_DIR/FS_LIB_PREFIX $DEP_DIR/FS_BIN_PREFIX $DEP_DIR/FS_SHARE_PREFIX
+RUN mkdir -p $FS_DIR/FS_LIB_PREFIX $FS_DIR/$FS_BIN_PREFIX $FS_DIR/$FS_SHARE_PREFIX
 
 # Source Directory
 ENV SRC_DIR=$DEP_DIR/src
@@ -90,22 +90,38 @@ RUN git clone https://github.com/input-output-hk/cardano-node.git \
     && cabal configure --with-compiler=ghc-$GHC_VERSION \
     && echo "package cardano-crypto-praos" >>  cabal.project.local \
     && echo "  flags: -external-libsodium-vrf" >>  cabal.project.local \
-    && cabal build all \
-    && mkdir -p $DESTDIR/$FS_BIN_PREFIX \
-    && cp -p dist-newstyle/build/x86_64-linux/ghc-$GHC_VERSION/cardano-node-$CARDANO_VERSION/x/cardano-node/build/cardano-node/cardano-node $DESTDIR/$FS_BIN_PREFIX \
-    && cp -p dist-newstyle/build/x86_64-linux/ghc-$GHC_VERSION/cardano-cli-$CARDANO_VERSION/x/cardano-cli/build/cardano-cli/cardano-cli $DESTDIR/$FS_BIN_PREFIX
+    && cabal build cardano-cli cardano-node \
+    && cp -p dist-newstyle/build/x86_64-linux/ghc-$GHC_VERSION/cardano-node-$CARDANO_VERSION/x/cardano-node/build/cardano-node/cardano-node $FS_DIR/$FS_BIN_PREFIX \
+    && cp -p dist-newstyle/build/x86_64-linux/ghc-$GHC_VERSION/cardano-cli-$CARDANO_VERSION/x/cardano-cli/build/cardano-cli/cardano-cli $FS_DIR/$FS_BIN_PREFIX
 
 # Compress Binaries
 RUN tar -zcvf /cardano-node-$CARDANO_VERSION.tar.gz -C $FS_DIR .
 RUN echo $CARDANO_VERSION > /CARDANO_VERSION
 
 # Testing server
-FROM ubuntu:20.04
+FROM ubuntu:20.04 AS tester
 
 ARG CARDANO_VERSION
-ARG SODIUM_COMMIT
-ARG CABAL_VERSION
-ARG GHC_VERSION
+ARG FS_PREFIX
 
+# Extract Binary
 COPY --from=builder /cardano-node-$CARDANO_VERSION.tar.gz /
 COPY --from=builder /CARDANO_VERSION /
+
+RUN tar -zxvf /cardano-node-$CARDANO_VERSION.tar.gz -C /
+
+RUN ldconfig
+
+RUN ls /usr/local/bin
+
+# Test that linking is correct
+RUN ldd -r $FS_PREFIX/bin/cardano-cli \
+    && ldd -r $FS_PREFIX/bin/cardano-node
+
+# Test that CLIs are executing correctly
+RUN $FS_PREFIX/bin/cardano-cli version \
+    && $FS_PREFIX/bin/cardano-node version
+
+# Test tjat CLIs are resolvable in current path
+RUN cardano-cli version \
+    && cardano-node version
