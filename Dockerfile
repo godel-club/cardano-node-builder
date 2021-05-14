@@ -1,5 +1,5 @@
 # Cardano CLI version
-ARG CARDANO_VERSION="1.26.1"
+ARG CARDANO_VERSION="1.27.0"
 
 # libsodium git commit
 ARG SODIUM_COMMIT=66f017f1
